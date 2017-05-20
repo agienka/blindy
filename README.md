@@ -10,7 +10,7 @@ $ python3 blindy.py --help
 usage: blindy.py [-h] [-f filename] [-m method] -p name -r regexp -u url
                  [-s set_of_queries]
 
-Run blind sql injection using brutforce
+Run blind sql injection with brutforce
 
 optional arguments:
   -h, --help            show this help message and exit
