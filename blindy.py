@@ -12,9 +12,7 @@ notin = ['information_schema', 'mysql', 'performance_schema', 'sys']
 
 
 def createBruteQuery(word, query):
-    queryParts = query.split(PLACEHOLDER)
-    qpart2 = '' if len(queryParts) == 1 else queryParts[1]
-    brutequery = queryParts[0] + word + qpart2
+    brutequery = query.format(word)
 
     return brutequery
 
@@ -48,7 +46,7 @@ def preparePayload(parameters, phrase, encode):
 
         if (re.search(PLACEHOLDER, param[1])):
 
-            newParam = re.sub(PLACEHOLDER, phrase, param[1])
+            newParam = phrase.format(param[1])
 
         else:
             newParam = param[1]
@@ -121,8 +119,13 @@ def runInjection(method, parameters, headers, phrasesToTest, url, pattern, posit
                 func(parameters, headers, phrase, url, inGETrequest, pattern, positive, encode)
 
         except:
-            print("Something went wrong. Possible causes: \n1. Wrong regexp pattern\n2. Negative search pattern is actually positive search pattern\n3. You forgot about some important header")
-
+            print('''
+            Something went wrong. Possible causes:
+            1. Wrong regexp pattern
+            2. Negative search pattern is actually positive search pattern
+            3. You forgot about some important header
+            4. There is more than one placeholder in query
+            ''')
 
 
 if __name__ == "__main__":

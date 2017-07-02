@@ -42,14 +42,19 @@ optional arguments:
   -e, --encode          Url encode payload
 
      ==================== example usage ===================
+
     Bruteforce POST `query_param` parameter:
     $ python3 blindy.py -m POST -p query_param={} -p submit=1 -r "negative pattern" -u http://example.com/index.php -s blind
+
     Bruteforce POST `query_param` parameter part:
     $ python3 blindy.py -m POST -p "query_param=login {}" -p submit=1 -r "negative pattern" -u http://example.com/index.php -s blind
+
     Bruteforce `X-Custom-Header` in POST request:
     $ python3 blindy.py -X POST -p someparam=param -H "X-Custom_header:{}" -r "negative pattern" -u http://example.com/index.php -s blind
+
     Simple check a list of queries against `username` parameter (negative pattern):
     $ python3 blindy.py -m POST -p username={} -p submit=1 -r "Hi stranger, please sign in!" -u http://example.com/login.php -s login
+
     Simple check a list of queries against `username` parameter (positive pattern):
     $ python3 blindy.py -m POST -p username={} -p submit=1 -r "Welcome back, Admin!" --positive -u http://example.com/login.php -s login
 ```
