@@ -1,22 +1,19 @@
 import unittest
 import blindy
 import re
-from unittest.mock import patch, MagicMock, Mock
+from unittest.mock import patch, MagicMock
 
-PARAMETERS = ['submit=true', 'admin=1', 'phrase']
-
-SIMPLE_PHRASE_WITHOUT_PLACEHOLDER = "some phrase"
-
+PARAMETERS_RAW = ["submit=true ", " admin= 1", "phrase = {}"]
+PARAMETERS_AS_LIST_WITH_PLACEHOLDER = [['submit','true'], ['admin','1'], ['phrase','{}']]
+PARAMETERS_AS_LIST_WITHOUT_PLACEHOLDER = [['submit','true'], ['admin','1'], ['another-phrase','some another phrase']]
+HEADERS={'X-Some-Header', 'headervalue'}
+HEADERS_WITH_PLACEHOLDER={'X-Some-Header', 'sql query goes here: {}'}
+PHRASE_WITHOUT_PLACEHOLDER = "some phrase"
 PHRASE_WITH_PLACEHOLDER = "some phrase with {} placeholder"
-
 SIMPLE_PAYLOAD = {'submit': 'true', 'admin': '1', 'phrase': 'some+phrase'}
-
+SIMPLE_PAYLOAD2 = {'submit': 'true', 'admin': '1', 'another-phrase': 'some+another+phrase'}
 RESPONSE = "<html>some response</html>"
-
 HTTP_URL = "http://url"
-
-QUERY = "' or (select table_name from information_schema.TABLES where table_schema not in (NOTIN) limit 1) regexp '^{}'#"
-
 PATTERN = re.compile('.*response.*')
 
 
@@ -24,10 +21,11 @@ class TestStringMethods(unittest.TestCase):
 
     def testCreateBruteQuery(self):
         # when
-        res = blindy.createBruteQuery('word', QUERY)
+        res = blindy.createBruteQuery('one', PHRASE_WITH_PLACEHOLDER)
 
         # then
-        self.assertEqual(res, "' or (select table_name from information_schema.TABLES where table_schema not in (NOTIN) limit 1) regexp '^word'#")
+        self.assertEqual(res, "some phrase with one placeholder")
+
 
     def testCreateWord(self):
         # when
@@ -35,42 +33,38 @@ class TestStringMethods(unittest.TestCase):
         # then
         self.assertEqual(res, 'string')
 
+
     def testSubstitutePlaceholders(self):
         # when
-        res = blindy.substitutePlaceholders(QUERY)
+        res = blindy.substitutePlaceholders(PHRASE_WITH_PLACEHOLDER, 'placeholder', ['at', 'the', 'end'])
 
         # then
-        self.assertEqual(res, "' or (select table_name from information_schema.TABLES where table_schema not in ('information_schema','mysql','performance_schema','sys') limit 1) regexp '^{}'#")
+        self.assertEqual(res, "some phrase with {} 'at','the','end'")
 
-    def testPreparePayload(self):
+
+    def testPreparePayloadWithPlaceholder(self):
         # when
-        res = blindy.preparePayload(PARAMETERS, SIMPLE_PHRASE_WITHOUT_PLACEHOLDER, True)
+        res = blindy.preparePayload(PARAMETERS_AS_LIST_WITH_PLACEHOLDER, PHRASE_WITHOUT_PLACEHOLDER, True)
 
         # then
         self.assertEqual(res, SIMPLE_PAYLOAD)
 
-    @patch('requests.get')
-    def testBruteforceSimplePhraseWithoutPlaceholders(self, igr):
-        # given
-        igr.return_value = RESPONSE
 
-        #when
-        res = blindy.bruteforce(['submit=true', 'admin=1', 'phrase'],"word", SIMPLE_PHRASE_WITHOUT_PLACEHOLDER, HTTP_URL, igr, PATTERN, True, True)
+    def testPreparePayloadWithoutPlaceholder(self):
+        # when
+        res = blindy.preparePayload(PARAMETERS_AS_LIST_WITHOUT_PLACEHOLDER, PHRASE_WITHOUT_PLACEHOLDER, True)
 
         # then
-        self.assertEqual(res, RESPONSE)
-        igr.assert_called_once_with(SIMPLE_PAYLOAD, HTTP_URL)
+        self.assertEqual(res, SIMPLE_PAYLOAD2)
 
-    @patch('requests.get')
-    def testInHTTPheader(self, reguests_get):
-        # given
-        reguests_get.return_value = MagicMock(status_code=200)
 
-        #when
-        blindy.inHTTPheader(SIMPLE_PAYLOAD, HTTP_URL)
+    def testParseParameters(self):
+        # when
+        res = blindy.parseParameters(PARAMETERS_RAW, '=')
 
         # then
-        reguests_get.assert_called_with(HTTP_URL, headers=SIMPLE_PAYLOAD)
+        self.assertEqual(res, PARAMETERS_AS_LIST_WITH_PLACEHOLDER)
+
 
     @patch('requests.post')
     def testInPOSTrequest(self, reguests_post):
@@ -78,10 +72,11 @@ class TestStringMethods(unittest.TestCase):
         reguests_post.return_value = MagicMock(status_code=200)
 
         #when
-        blindy.inPOSTrequest(SIMPLE_PAYLOAD, HTTP_URL)
+        blindy.inPOSTrequest(SIMPLE_PAYLOAD, HTTP_URL, HEADERS)
 
         # then
-        reguests_post.assert_called_with(HTTP_URL, data=SIMPLE_PAYLOAD)\
+        reguests_post.assert_called_with(HTTP_URL, data=SIMPLE_PAYLOAD, headers=HEADERS)
+
 
     @patch('requests.get')
     def testInGETrequest(self, reguests_get):
@@ -89,10 +84,23 @@ class TestStringMethods(unittest.TestCase):
         reguests_get.return_value = MagicMock(status_code=200, text='it\'s ok')
 
         #when
-        blindy.inGETrequest(SIMPLE_PAYLOAD, HTTP_URL)
+        blindy.inGETrequest(SIMPLE_PAYLOAD, HTTP_URL, HEADERS)
 
         # then
-        reguests_get.assert_called_with(HTTP_URL, params=SIMPLE_PAYLOAD)
+        reguests_get.assert_called_with(HTTP_URL, params=SIMPLE_PAYLOAD, headers=HEADERS)
+
+
+    @patch('blindy.inPOSTrequest')
+    def testNotBruteforce(self, ipr):
+        # given
+        ipr.return_value = RESPONSE
+
+        # when
+        blindy.notBruteForce(PARAMETERS_AS_LIST_WITH_PLACEHOLDER, HEADERS, PHRASE_WITHOUT_PLACEHOLDER, HTTP_URL, ipr, PATTERN, True, True)
+
+        # then
+        ipr.assert_called_with(SIMPLE_PAYLOAD, HTTP_URL, HEADERS)
+
 
     @patch('blindy.bruteforce')
     def testRunInjectionPOST(self, bf):
@@ -100,33 +108,39 @@ class TestStringMethods(unittest.TestCase):
         bf.return_value = RESPONSE
 
         # when
-        blindy.runInjection("POST", PARAMETERS, [QUERY, QUERY], HTTP_URL, PATTERN, False, True)
+        blindy.runInjection("POST", PARAMETERS_AS_LIST_WITH_PLACEHOLDER, HEADERS,[PHRASE_WITH_PLACEHOLDER, PHRASE_WITH_PLACEHOLDER], HTTP_URL, PATTERN, False, True)
 
         # then
-        bf.assert_called_with(PARAMETERS, '', QUERY, HTTP_URL, blindy.inPOSTrequest, PATTERN, False, True)
+        bf.assert_called_with(PARAMETERS_AS_LIST_WITH_PLACEHOLDER, HEADERS, PHRASE_WITH_PLACEHOLDER, HTTP_URL, blindy.inPOSTrequest, PATTERN, False, True)
 
 
     @patch('blindy.bruteforce')
     def testRunInjectionGET(self, bf):
-        # given
-        bf.return_value = RESPONSE
-
         # when
-        blindy.runInjection("GET", PARAMETERS, [QUERY, QUERY], HTTP_URL, PATTERN, False, True)
+        blindy.runInjection("GET", PARAMETERS_AS_LIST_WITH_PLACEHOLDER, HEADERS, [PHRASE_WITH_PLACEHOLDER, PHRASE_WITH_PLACEHOLDER], HTTP_URL, PATTERN, False, True)
 
         # then
-        bf.assert_called_with(PARAMETERS, '', QUERY, HTTP_URL, blindy.inGETrequest, PATTERN, False, True)
+        bf.assert_called_with(PARAMETERS_AS_LIST_WITH_PLACEHOLDER, HEADERS, PHRASE_WITH_PLACEHOLDER, HTTP_URL, blindy.inGETrequest, PATTERN, False, True)
 
     @patch('blindy.bruteforce')
-    def testRunInjectionHEADER(self, bf):
-        # given
-        bf.return_value = RESPONSE
-
+    def testInjectionInHeader(self, bf):
         # when
-        blindy.runInjection("HEADER", PARAMETERS, [QUERY, QUERY], HTTP_URL, PATTERN, False, True)
+        blindy.runInjection("GET", PARAMETERS_AS_LIST_WITHOUT_PLACEHOLDER, HEADERS_WITH_PLACEHOLDER,
+                            [PHRASE_WITH_PLACEHOLDER], HTTP_URL,
+                            PATTERN, False, True)
+        # then
+        bf.assert_called_with(PARAMETERS_AS_LIST_WITHOUT_PLACEHOLDER, HEADERS_WITH_PLACEHOLDER, PHRASE_WITH_PLACEHOLDER,
+                              HTTP_URL,
+                              blindy.inGETrequest, PATTERN, False, True)
+
+    @patch('blindy.notBruteForce')
+    def testRunInjectionNoBruteforceIfNoPlaceholderInQuery(self, notBruteForce):
+        # when
+        blindy.runInjection("GET", PARAMETERS_AS_LIST_WITH_PLACEHOLDER, HEADERS, [PHRASE_WITHOUT_PLACEHOLDER], HTTP_URL, PATTERN, False, True)
 
         # then
-        bf.assert_called_with(PARAMETERS, '', QUERY, HTTP_URL, blindy.inHTTPheader, PATTERN, False, True)
+        notBruteForce.assert_called_once_with(PARAMETERS_AS_LIST_WITH_PLACEHOLDER, HEADERS, PHRASE_WITHOUT_PLACEHOLDER, HTTP_URL, blindy.inGETrequest, PATTERN, False, True)
+
 
     @patch('blindy.inGETrequest')
     def testPositivePatternFound(self, igr):
@@ -134,10 +148,11 @@ class TestStringMethods(unittest.TestCase):
         igr.side_effect = [RESPONSE if (i==20 or i==39 or i==44 or i==62) else 'Not a pattern' for i in range(0,len(blindy.chars)+20+38+44+62)]
 
         # when
-        result = blindy.bruteforce(PARAMETERS, "", QUERY, HTTP_URL, igr, PATTERN, True, True)
+        result = blindy.bruteforce(PARAMETERS_AS_LIST_WITH_PLACEHOLDER, HEADERS, PHRASE_WITH_PLACEHOLDER, HTTP_URL, igr, PATTERN, True, True)
 
         # then
         self.assertEqual(result, 'user')
+
 
     @patch('blindy.inGETrequest')
     def testNegativePatternFound(self, igr):
@@ -145,11 +160,10 @@ class TestStringMethods(unittest.TestCase):
         igr.side_effect = ['Not a pattern' if (i==20 or i==39 or i==44 or i==62) else RESPONSE for i in range(0,len(blindy.chars)+20+38+44+62)]
 
         # when
-        result = blindy.bruteforce(PARAMETERS, "", QUERY, HTTP_URL, igr, PATTERN, False, True)
+        result = blindy.bruteforce(PARAMETERS_AS_LIST_WITH_PLACEHOLDER, HEADERS, PHRASE_WITH_PLACEHOLDER, HTTP_URL, igr, PATTERN, False, True)
 
         # then
         self.assertEqual(result, 'user')
-
 
 
 if __name__ == '__main__':
