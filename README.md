@@ -13,9 +13,9 @@ Note: this script was created for fun, helpful in some ctf challenges :)
 ## command line interface
 ```bash
 $ python3 blindy.py --help
-usage: blindy.py [-h] [-f FILENAME] [-X HTTP_METHOD] -p PARAMETER
-                 [-H HTTP_HEADER] -r PATTERN [--positive] -u URL
-                 [-s QUERY_SET] [-e]
+usage: blindy.py [-h] [-f FILENAME] -u URL [-X HTTP_METHOD] -p PARAMETER
+                 [-H HTTP_HEADER] -r PATTERN [--positive] [-s QUERY_SET] [-e]
+                 [-v]
 
 Run blind sql injection using brute force
 
@@ -24,6 +24,7 @@ optional arguments:
   -f FILENAME, --filename FILENAME
                         File name for your commands (json), default default-
                         queries.json
+  -u URL, --url URL
   -X HTTP_METHOD, --http-method HTTP_METHOD
                         Http method: (GET (default), POST)
   -p PARAMETER, --parameter PARAMETER
@@ -35,28 +36,28 @@ optional arguments:
                         Regular expression/pattern
   --positive            Injection was successfull if pattern IS PRESENT in
                         response
-  -u URL, --url URL
   -s QUERY_SET, --query-set QUERY_SET
                         Set of queries from loaded file, e.g. login, blind.
                         Default to blind.
   -e, --encode          Url encode payload
+  -v, --verbose         Print full info what's going on
 
-     ==================== example usage ===================
+==================== [example usage] ===================
 
-    Bruteforce POST `query_param` parameter:
-    $ python3 blindy.py -m POST -p query_param={} -p submit=1 -r "negative pattern" -u http://example.com/index.php -s blind
+Bruteforce POST `query_param` parameter:
+$ python3 blindy.py -X POST -p query_param={} -p submit=1 -r "negative pattern" -u http://example.com/index.php -s blind
 
-    Bruteforce POST `query_param` parameter part:
-    $ python3 blindy.py -m POST -p "query_param=login {}" -p submit=1 -r "negative pattern" -u http://example.com/index.php -s blind
+Bruteforce POST `query_param` parameter part:
+$ python3 blindy.py -X POST -p "query_param=login {}" -p submit=1 -r "negative pattern" -u http://example.com/index.php -s blind
 
-    Bruteforce `X-Custom-Header` in POST request:
-    $ python3 blindy.py -X POST -p someparam=param -H "X-Custom_header:{}" -r "negative pattern" -u http://example.com/index.php -s blind
+Bruteforce `X-Custom-Header` in POST request:
+$ python3 blindy.py -X POST -p someparam=param -H "X-Custom_header: {}" -r "negative pattern" -u http://example.com/index.php -s blind
 
-    Simple check a list of queries against `username` parameter (negative pattern):
-    $ python3 blindy.py -m POST -p username={} -p submit=1 -r "Hi stranger, please sign in!" -u http://example.com/login.php -s login
+Simple check a list of queries against `username` parameter (negative pattern):
+$ python3 blindy.py -X POST -p username={} -p submit=1 -r "Hi stranger, please sign in!" -u http://example.com/login.php -s login
 
-    Simple check a list of queries against `username` parameter (positive pattern):
-    $ python3 blindy.py -m POST -p username={} -p submit=1 -r "Welcome back, Admin!" --positive -u http://example.com/login.php -s login
+Simple check a list of queries against `username` parameter (positive pattern):
+$ python3 blindy.py -X POST -p username={} -p submit=1 -r "Welcome back, Admin!" --positive -u http://example.com/login.php -s login
 ```
 
 ## running tests

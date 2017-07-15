@@ -12,7 +12,7 @@ PHRASE_WITHOUT_PLACEHOLDER = "some phrase"
 PHRASE_WITH_PLACEHOLDER = "some phrase with {} placeholder"
 SIMPLE_PAYLOAD = {'submit': 'true', 'admin': '1', 'phrase': 'some+phrase'}
 SIMPLE_PAYLOAD2 = {'submit': 'true', 'admin': '1', 'another-phrase': 'some+another+phrase'}
-RESPONSE = "<html>some response</html>"
+RESPONSE = ("<html>some response</html>",200)
 HTTP_URL = "http://url"
 PATTERN = re.compile('.*response.*')
 
@@ -145,7 +145,7 @@ class TestStringMethods(unittest.TestCase):
     @patch('blindy.inGETrequest')
     def testPositivePatternFound(self, igr):
         # given
-        igr.side_effect = [RESPONSE if (i==20 or i==39 or i==44 or i==62) else 'Not a pattern' for i in range(0,len(blindy.chars)+20+38+44+62)]
+        igr.side_effect = [RESPONSE if (i==20 or i==39 or i==44 or i==62) else ('Not a pattern', 500) for i in range(0,len(blindy.chars)+20+38+44+62)]
 
         # when
         result = blindy.bruteforce(PARAMETERS_AS_LIST_WITH_PLACEHOLDER, HEADERS, PHRASE_WITH_PLACEHOLDER, HTTP_URL, igr, PATTERN, True, True)
@@ -157,7 +157,7 @@ class TestStringMethods(unittest.TestCase):
     @patch('blindy.inGETrequest')
     def testNegativePatternFound(self, igr):
         # given
-        igr.side_effect = ['Not a pattern' if (i==20 or i==39 or i==44 or i==62) else RESPONSE for i in range(0,len(blindy.chars)+20+38+44+62)]
+        igr.side_effect = [('Not a pattern', 500) if (i==20 or i==39 or i==44 or i==62) else RESPONSE for i in range(0,len(blindy.chars)+20+38+44+62)]
 
         # when
         result = blindy.bruteforce(PARAMETERS_AS_LIST_WITH_PLACEHOLDER, HEADERS, PHRASE_WITH_PLACEHOLDER, HTTP_URL, igr, PATTERN, False, True)
